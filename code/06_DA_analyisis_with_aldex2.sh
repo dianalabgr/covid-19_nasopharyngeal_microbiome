@@ -3,7 +3,7 @@ source tab-qiime
 #conda info
 
 PROJECT_FOLDER="/mnt/raid1/philipos/corona_project/16S_analysis"
-OUTDIR=$PROJECT_FOLDER/data/intermediate/09_DA_analysis
+OUTDIR=$PROJECT_FOLDER/results/DA_analysis
 SE_NE=$OUTDIR"/DA_severe_vs_negative"
 SE_AS=$OUTDIR"/DA_severe_vs_asymptomatic"
 SE_MI=$OUTDIR"/DA_severe_vs_mild"
