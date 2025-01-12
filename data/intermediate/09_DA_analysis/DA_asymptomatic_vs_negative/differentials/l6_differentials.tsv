@@ -1,0 +1,3 @@
+featureid	rab.all	rab.win.1.negative	rab.win.2.asymptomatic	diff.btw	diff.win	effect	overlap	we.ep	we.eBH	wi.ep	wi.eBH
+#q2:types	numeric	numeric	numeric	numeric	numeric	numeric	numeric	numeric	numeric	numeric	numeric
+k__Bacteria;p__Firmicutes;c__Clostridia;o__Clostridiales;f__Lachnospiraceae;g__Oribacterium	6.75923481499751	7.95028511705736	1.59719169651591	-5.355465572195	5.62898068509366	-0.849421670600954	0.161873494382922	0.000247082321255186	0.0463639193197738	4.99198747550851e-05	0.0147419417306977
