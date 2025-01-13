@@ -10,10 +10,8 @@ library(wesanderson)
 project_dir=this.path::here(..=1)
 setwd(project_dir)
 plots_dir=file.path(project_dir, "results/plots")
-supp2_plots_dir=file.path(project_dir,"results/supplementary_plots_2")
 supp_tables_dir=file.path(project_dir, "results/supplementary_tables")
 dir.create(plots_dir, showWarnings = FALSE)
-dir.create(supp2_plots_dir, showWarnings = FALSE)
 dir.create(supp_tables_dir, showWarnings = FALSE)
 
 metadata_file = paste0(project_dir, "/data/16S_3batches_metadata.tsv")
@@ -28,24 +26,23 @@ comparisons = data.frame(
 
 taxonomy_level="genus"
 for(taxonomy_level in c("phylum","family","genus")){
-  source(paste0(project_dir,"/code/10_Composition/arguments_",taxonomy_level,".R"))
   if (taxonomy_level=="genus"){
     table_name="filtered_table_l6.qza"
-    differentials="l6_differentials.tsv"
+    differentials="l6_ALDEx2_table.tsv"
     substitute1="k__.*g__"
     substitute2=";s__.*"
     substitute3="^k__.*f__"
     substitute4="f__"
   } else if (taxonomy_level=="family"){
     table_name="filtered_table_l5.qza"
-    differentials="l5_differentials.tsv"
+    differentials="l5_ALDEx2_table.tsv"
     substitute1="k__.*f__"
     substitute2=";g__.*"
     substitute3="^k__.*c__"
     substitute4="c__"
   } else if (taxonomy_level=="phylum"){
     table_name="filtered_table_l2.qza"
-    differentials="l2_differentials.tsv"
+    differentials="l2_ALDEx2_table.tsv"
     substitute1="k__.*p__"
     substitute2=";p__.*"
     substitute3="^k__.*f__"
@@ -56,24 +53,20 @@ for(taxonomy_level in c("phylum","family","genus")){
   for (i in 1:nrow(comparisons)){
     group1=comparisons[i,"group1"]
     group2=comparisons[i,"group2"]
-    differential_folder=paste0(DA_results_folder,"DA_",group1,"_vs_",group2,"/differentials")
-   
-      mytable=read_table(paste0(differential_folder,"/",differentials), col_names =T)[-1,] %>%
-                                                   column_to_rownames("featureid") %>%
-                                                   mutate(we.eBH=as.numeric(we.eBH)) %>%
-                                                   filter(we.eBH<=0.05) %>%
-                                                   transmute("in {group1} compared to {group2}" :=ifelse(`diff.btw`>0,"UP","DOWN")) %>%
-                                                   rownames_to_column("Feature.ID")        
-      
-      significant_taxa_names=append(significant_taxa_names, unique(DA_taxa_direction$Feature.ID))
-  
+    differential_folder=paste0(DA_results_folder,"DA_",group1,"_vs_",group2)
+    mytable=read_table(paste0(differential_folder,"/",differentials), col_names =T)[-1,] %>%
+                                                 column_to_rownames("featureid") %>%
+                                                 mutate(we.eBH=as.numeric(we.eBH)) %>%  #  #we.eBH - Expected Benjamini-Hochberg corrected P value of Welch’s t test
+                                                 filter(we.eBH<=0.05) %>%
+                                                 transmute("in {group1} compared to {group2}" :=ifelse(`diff.btw`>0,"UP","DOWN")) %>%
+                                                 rownames_to_column("Feature.ID")       
+    significant_taxa_names=append(significant_taxa_names, unique(DA_taxa_direction$Feature.ID))
     if(is.null(DA_taxa_direction)){
       DA_taxa_direction=mytable
     }     else{
       DA_taxa_direction=merge(DA_taxa_direction,mytable, all=TRUE, by = 'Feature.ID') 
     }
   }
-  
   #add Taxon column
   DA_taxa_direction = DA_taxa_direction %>% mutate(Taxon=gsub(substitute1, "", Feature.ID)) %>%
     mutate(Taxon=gsub(substitute2, "", Taxon)) %>%
@@ -81,8 +74,6 @@ for(taxonomy_level in c("phylum","family","genus")){
     filter(Taxon!="")
     #select(-Feature.ID)
   #DA_taxa_direction %>% rename("Feature.ID"="Row.names")
-
-  #
   OTUs<-read_qza(paste0(in_dir,"/",table_name))$data
   OTUs<-apply(OTUs, 2, function(x) x/sum(x)*100) #convert to percent
   OTUs= OTUs %>%
@@ -90,7 +81,6 @@ for(taxonomy_level in c("phylum","family","genus")){
     rownames_to_column("Feature.ID")
   #we.eBH - Expected Benjamini-Hochberg corrected P value of Welch’s t test
   if(nrow(DA_taxa_direction)==0){next}
-  
   #calculate median abundance per group
   OTUs_composition_table=
     OTUs %>%
@@ -143,12 +133,13 @@ for(taxonomy_level in c("phylum","family","genus")){
     mutate(type = factor(type, levels=c("negative","asymptomatic","COVID-19")))
 
   #create boxplot, all taxa
-  myboxplot=qplot(Taxon, Abundance, data = OTUs_composition_table, color = factor(type, levels=c("negative","asymptomatic","COVID-19")), geom = "boxplot", fill=factor(type, levels=c("negative","asymptomatic","COVID-19")))+
-    scale_fill_manual(values=c("#56B4E9","#999999","#E69F00")) +
-    scale_color_manual(values=c("#56B4E9","#999999","#E69F00"))+
+  myboxplot=qplot(Taxon, Abundance, data = OTUs_composition_table, color = factor(type2, levels=c("1.negative","2.asymptomatic","3.mild","4.severe" )), geom = "boxplot", fill=factor(type2, levels=c("1.negative","2.asymptomatic","3.mild","4.severe")))+
+    scale_fill_manual(values=c("white","white","white","white")) +
+    scale_color_manual(values=c("#56B4E9","#999999","orange","brown"))+
     theme(axis.text.x = element_text(angle = 55, hjust = 1)) +
-    labs(fill = "type", color="type")+
-    ylab("Relative Abundance (%)")
+    labs(fill = "Patient group", color="Patient group")+
+    ylab("Relative Abundance (%)")+
+    xlab(str_to_sentence(taxonomy_level))
   myboxplot
   #ggsave(paste0(supp2_plots_dir,"/",taxonomy_level,"_boxplot.png"),myboxplot, "png", width=26.5, height=15.2, units="cm")
   
@@ -162,7 +153,7 @@ for(taxonomy_level in c("phylum","family","genus")){
     ylab("Relative Abundance (%)")+
     xlab(str_to_sentence(taxonomy_level))
   myboxplot
-  ggsave(paste0(supp2_plots_dir,"/selected_",taxonomy_level,"_boxplot.png"),myboxplot, "png", width=26.5, height=15.2, units="cm")
+  #ggsave(paste0(supp2_plots_dir,"/selected_",taxonomy_level,"_boxplot.png"),myboxplot, "png", width=26.5, height=15.2, units="cm")
   if(taxonomy_level=="phylum"){p1=myboxplot}
   if(taxonomy_level=="family"){p2=myboxplot}
   if(taxonomy_level=="genus"){p3=myboxplot}
