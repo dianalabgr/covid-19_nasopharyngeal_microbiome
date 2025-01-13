@@ -3,7 +3,7 @@ source tab-qiime
 #conda info
 
 PROJECT_FOLDER="/mnt/raid1/philipos/corona_project/16S_analysis"
-OUTDIR=$PROJECT_FOLDER/results/DA_analysis
+OUTDIR=$PROJECT_FOLDER/results/DA2_analysis
 SE_NE=$OUTDIR"/DA_severe_vs_negative"
 SE_AS=$OUTDIR"/DA_severe_vs_asymptomatic"
 SE_MI=$OUTDIR"/DA_severe_vs_mild"
@@ -29,90 +29,45 @@ mkdir $AS_NE
 
 X=mild
 Y=asymptomatic
+level=l2
 METADATA_COLUMN="type2"
 for X in severe mild asymptomatic
 do
   for Y in mild asymptomatic negative
   do
-	if [[ $X == $Y ]]
-	then
-	  continue
-	elif [[ $X == "asymptomatic" ]] && [[ $Y == "mild" ]]
-	then
-	  continue
-	else
-	  #l2
-    qiime feature-table filter-samples \
-      --i-table $INDIR/filtered_table_l2.qza \
-      --m-metadata-file $METADATA_FILE \
-      --p-where "[type]='"$X"' OR [type]='"$Y"'" \
-      --o-filtered-table $OUTDIR"/DA_"$X"_vs_"$Y"/filtered_table_l2_"$X"_"$Y".qza"
-    qiime aldex2 aldex2 \
-      --i-table $OUTDIR"/DA_"$X"_vs_"$Y"/filtered_table_l2_"$X"_"$Y".qza" \
-      --m-metadata-file $METADATA_FILE \
-      --m-metadata-column $METADATA_COLUMN \
-      --o-differentials $OUTDIR"/DA_"$X"_vs_"$Y"/differentials_l2.qza"
-    qiime aldex2 extract-differences \
-      --i-table $OUTDIR"/DA_"$X"_vs_"$Y"/differentials_l2.qza" \
-      --o-differentials $OUTDIR"/DA_"$X"_vs_"$Y"/extracted_sig_differences_l2" \
-      --p-sig-threshold 1 \
-      --p-effect-threshold 0 \
-      --p-difference-threshold 0
-    #The tab separated file of differentially called features can be exported.
-    mkdir $OUTDIR"/DA_"$X"_vs_"$Y"/differentials"
-    qiime tools export \
-      --input-path $OUTDIR"/DA_"$X"_vs_"$Y"/extracted_sig_differences_l2.qza" \
-      --output-path $OUTDIR"/DA_"$X"_vs_"$Y"/differentials"
-    mv $OUTDIR"/DA_"$X"_vs_"$Y"/differentials/differentials.tsv" $OUTDIR"/DA_"$X"_vs_"$Y"/differentials/l2_differentials.tsv"
-  
-    #l5
-    qiime feature-table filter-samples \
-      --i-table $INDIR/filtered_table_l5.qza \
-      --m-metadata-file $METADATA_FILE \
-      --p-where "[type]='"$X"' OR [type]='"$Y"'" \
-      --o-filtered-table $OUTDIR"/DA_"$X"_vs_"$Y"/filtered_table_l5_"$X"_"$Y".qza"
-    qiime aldex2 aldex2 \
-      --i-table $OUTDIR"/DA_"$X"_vs_"$Y"/filtered_table_l5_"$X"_"$Y".qza" \
-      --m-metadata-file $METADATA_FILE \
-      --m-metadata-column $METADATA_COLUMN \
-      --o-differentials $OUTDIR"/DA_"$X"_vs_"$Y"/differentials_l5.qza"
-    qiime aldex2 extract-differences \
-      --i-table $OUTDIR"/DA_"$X"_vs_"$Y"/differentials_l5.qza" \
-      --o-differentials $OUTDIR"/DA_"$X"_vs_"$Y"/extracted_sig_differences_l5" \
-      --p-sig-threshold 0.05 \
-      --p-effect-threshold 0 \
-      --p-difference-threshold 0
-    #The tab separated file of differentially called features can be exported.
-    mkdir $OUTDIR"/DA_"$X"_vs_"$Y"/differentials"
-    qiime tools export \
-      --input-path $OUTDIR"/DA_"$X"_vs_"$Y"/extracted_sig_differences_l5.qza" \
-      --output-path $OUTDIR"/DA_"$X"_vs_"$Y"/differentials"
-    mv $OUTDIR"/DA_"$X"_vs_"$Y"/differentials/differentials.tsv" $OUTDIR"/DA_"$X"_vs_"$Y"/differentials/l5_differentials.tsv"
-  
-    #l6
-    qiime feature-table filter-samples \
-      --i-table $INDIR/filtered_table_l6.qza \
-      --m-metadata-file $METADATA_FILE \
-      --p-where "[type]='"$X"' OR [type]='"$Y"'" \
-      --o-filtered-table $OUTDIR"/DA_"$X"_vs_"$Y"/filtered_table_l6_"$X"_"$Y".qza"
-    qiime aldex2 aldex2 \
-      --i-table $OUTDIR"/DA_"$X"_vs_"$Y"/filtered_table_l6_"$X"_"$Y".qza" \
-      --m-metadata-file $METADATA_FILE \
-      --m-metadata-column $METADATA_COLUMN \
-      --o-differentials $OUTDIR"/DA_"$X"_vs_"$Y"/differentials_l6.qza"
-    qiime aldex2 extract-differences \
-      --i-table $OUTDIR"/DA_"$X"_vs_"$Y"/differentials_l6.qza" \
-      --o-differentials $OUTDIR"/DA_"$X"_vs_"$Y"/extracted_sig_differences_l6" \
-      --p-sig-threshold 0.05 \
-      --p-effect-threshold 0 \
-      --p-difference-threshold 0
-    #The tab separated file of differentially called features can be exported.
-    mkdir $OUTDIR"/DA_"$X"_vs_"$Y"/differentials"
-    qiime tools export \
-      --input-path $OUTDIR"/DA_"$X"_vs_"$Y"/extracted_sig_differences_l6.qza" \
-      --output-path $OUTDIR"/DA_"$X"_vs_"$Y"/differentials"
-    mv $OUTDIR"/DA_"$X"_vs_"$Y"/differentials/differentials.tsv" $OUTDIR"/DA_"$X"_vs_"$Y"/differentials/l6_differentials.tsv"
-	  
-	fi
+	for level in l2 l5 l6
+	do
+		
+		if [[ $X == $Y ]]
+		then
+		  continue
+		elif [[ $X == "asymptomatic" ]] && [[ $Y == "mild" ]]
+		then
+		  continue
+		else
+		qiime feature-table filter-samples \
+		  --i-table $INDIR"/filtered_table_"$level".qza" \
+		  --m-metadata-file $METADATA_FILE \
+		  --p-where "[type]='"$X"' OR [type]='"$Y"'" \
+		  --o-filtered-table $OUTDIR"/DA_"$X"_vs_"$Y"/filtered_table_"$level"_"$X"_"$Y".qza"
+		qiime aldex2 aldex2 \
+		  --i-table $OUTDIR"/DA_"$X"_vs_"$Y"/filtered_table_"$level"_"$X"_"$Y".qza" \
+		  --m-metadata-file $METADATA_FILE \
+		  --m-metadata-column $METADATA_COLUMN \
+		  --o-differentials $OUTDIR"/DA_"$X"_vs_"$Y"/differentials_"$level".qza"
+		qiime aldex2 extract-differences \
+		  --i-table $OUTDIR"/DA_"$X"_vs_"$Y"/differentials_"$level".qza" \
+		  --o-differentials $OUTDIR"/DA_"$X"_vs_"$Y"/extracted_differences_"$level \
+		  --p-sig-threshold 1 \
+		  --p-effect-threshold 0 \
+		  --p-difference-threshold 0
+		#The tab separated file of differentially called features can be exported.
+		qiime tools export \
+		  --input-path $OUTDIR"/DA_"$X"_vs_"$Y"/extracted_differences_"$level".qza" \
+		  --output-path $OUTDIR"/DA_"$X"_vs_"$Y
+		mv $OUTDIR"/DA_"$X"_vs_"$Y"/differentials.tsv" $OUTDIR"/DA_"$X"_vs_"$Y"/"$level"_ALDEx2_table.tsv"
+		rm $OUTDIR"/DA_"$X"_vs_"$Y"/filtered_table_"$level"_"$X"_"$Y".qza"
+		fi
+	done
   done
 done
