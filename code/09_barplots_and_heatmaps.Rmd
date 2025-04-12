@@ -1,7 +1,7 @@
 ---
-title: "barplots"
-author: "Filippos Kardaras"
-date: "2/14/2023"
+title: "barfigures"
+author: "FK"
+date: "2/14/2024"
 output: html_document
 ---
 
@@ -17,208 +17,68 @@ library(tidyverse)
 library(xlsx)
 library(this.path())
 library(ape)
-# library("phyloseq")
 
 project_dir=this.path::here(..=1)
 tables_directory=paste0(project_dir,"/data/intermediate/06_frequency_filtering")
-plots_dir=paste0(project_dir, "/results/plots")
-supp2_plots_dir=file.path(project_dir,"results/supplementary_plots_2")
-#heatmap_dir=file.path(project_dir,"data/intermediate/10_heatmap")
-dir.create(supp2_plots_dir, showWarnings = FALSE)
-#dir.create(heatmap_dir, showWarnings = FALSE)
-metadata_file=paste0(project_dir,"/data/16S_3batches_metadata.tsv")
+figures_dir=paste0(project_dir, "/results/figures")
+supp2_figures_dir=file.path(project_dir,"results/other_figures")
+dir.create(supp2_figures_dir, showWarnings = FALSE)
+metadata_file=paste0(project_dir,"/data/covid19_study_metadata.tsv")
 metadata<-read_q2metadata(metadata_file)
-
+metadata$group_1 = factor(metadata$group_1,c("negative","asymptomatic","mild","severe"))  #, labels = c("NE","AS","MI","SE")
+metadata$group_2 = gsub(" ","\n",metadata$group_2)
+metadata$group_2 = factor(metadata$group_2,c('negative',"asymptomatic\nrecovery\nphase","asymptomatic\nearly\nphase",'mild','severe'), levels=c('negative',"asymptomatic\nrecovery\nphase","asymptomatic\nearly\nphase",'mild','severe'))
+metadata = metadata %>% mutate(group_2 = factor(group_2, labels = c('negative',"asympt.\nrecovery\nphase","asympt.\nearly\nphase",'mild','severe')))
 
 ```
-# Heatmaps Genus level
-```{r plot genus_heatmaps}
-####GENUS
-#CREATE "_Other" taxon 
+```{r barplot_genus_level}
 OTUs<-read_qza(file.path(tables_directory,"filtered_table_l6.qza"))$data
 OTUs<-apply(OTUs, 2, function(x) x/sum(x)*100) #convert to percent
-OTUs_simplified= OTUs %>%
-  as.data.frame() %>%
-  rownames_to_column("Feature.ID") %>%
-  mutate(Feature.ID=if_else(grepl("g__$",Feature.ID,fixed=FALSE), "_Other", Feature.ID)) %>%  #those classified at genus "g__" will be marked as _Other
-  mutate(Feature.ID=if_else(grepl("g__",Feature.ID,fixed=FALSE), Feature.ID, "_Other")) #those not classified at a genus will also be marked as _Other (they do not contain g__)
 
-#select top 4 from each sample
-OTUsToPlot<-  
-  OTUs_simplified %>%
-  gather(-Feature.ID, key="SampleID", value="Abundance") %>%
-  group_by(SampleID) %>%
-  mutate(Abundance=if_else(Feature.ID == "__Other",  NA_real_, Abundance )) %>% #flag features to be collapsed
-  mutate(Abundance=if_else(Abundance == 0,  NA_real_, Abundance )) %>% #flag features to be collapsed
-  group_by(SampleID, Feature.ID) %>%
-  summarize(Abundance=sum(Abundance)) %>%
-  group_by(SampleID) %>%  
-  slice_max(Abundance,n=4) %>%
-  pull(Feature.ID) %>% #extract only the names from the table
-  unique 
-OTUs_composition_table=
-  OTUs_simplified %>%
-  as.data.frame() %>%
-  gather(-Feature.ID, key="SampleID", value="Abundance") %>%
-  mutate(Feature.ID=if_else((Feature.ID %in% OTUsToPlot) | (Feature.ID =="_Other"),  Feature.ID, "_Low abundant")) %>% #flag features to be collapsed
-  group_by(SampleID, Feature.ID) %>%
-  summarize(Abundance=sum(Abundance)) %>%
-  left_join(metadata[,1:16]) %>%
-  mutate(NormAbundance=log10(Abundance+0.01)) %>% # do a log10 transformation after adding a 0.01% pseudocount. Could also add 1 read before transformation to percent
-  mutate(Taxon=gsub("k__.*g__", "", Feature.ID)) %>%
-  mutate(Taxon=gsub(";s__.*", "", Taxon)) 
-#plot1
-OTUs_composition_table%>%
-  ggplot(aes(x=SampleID, y=Taxon, fill=NormAbundance)) +
-  geom_tile() +
-  facet_grid(~`type2`, scales="free_x", space="free_x") +
-  theme_q2r() +
-  theme(axis.text.x=element_text(angle=45, hjust=1)) +
-  #theme(strip.text = element_text(angle=90, hjust=0, size =8))+
-  scale_fill_viridis_c(name="log10(% Abundance)")
-ggsave(file.path(supp2_plots_dir,"Genus_heatmap.pdf"), height=5, width=11, device="pdf") # save a PDF
-ggsave(file.path(supp2_plots_dir,"Genus_heatmap.png"), height=5, width=11, device="png") # save a png
-```
-
-
-# barplot
-```{r barplot genera}
-barplot = taxa_barplot(OTUs, metadata, "type2", ntoplot = 10)
+barplot = taxa_barplot(OTUs, metadata, "group_2", ntoplot = 12)
 barplot[["data"]][["Taxon"]]=gsub("k__.*g__", "", barplot[["data"]][["Taxon"]])
 barplot[["data"]][["Taxon"]]=gsub(";s__.*", "", barplot[["data"]][["Taxon"]])
 barplot[["data"]][["Taxon"]]=gsub("Remainder", " Remainder", barplot[["data"]][["Taxon"]])
-# barplot[["data"]][["Taxon"]]=ifelse(barplot[["data"]][["Taxon"]]=="Enterococcus","Enterococcus","_")
-barplot + ylab("Relative Abundance (%)") +
-  theme(strip.text.x = element_text(size = 11, angle = 0), axis.title.y=element_text(size = 11))
-ggsave(file.path(plots_dir,"Figure_4.png"), height=5, width=11, device="png")
-ggsave(file.path(plots_dir,"Figure_4.pdf"), height=5, width=11, device="pdf")
+barplot + scale_fill_manual(values = c("grey", "coral", "yellow3", "aquamarine", "#49b3a6","chartreuse1","pink", "olivedrab", "darkorchid", "gold", "firebrick", "steelblue2", "blue4"), name = "") +
+  ylab("Relative Abundance (%)") +
+  guides(fill=guide_legend(title="Genus")) +
+  theme(strip.text.x = element_text(size = 10, angle = 0), axis.title.y=element_text(size = 11), 
+        legend.text = element_text(size=10), legend.title = element_text(size=10))
+  
+ggsave(file.path(figures_dir,"Figure_3.png"), height=5, width=11, device="png")
+ggsave(file.path(figures_dir,"Figure_3.pdf"), height=5, width=11, device="pdf")
 
 ```
 
-```{r heatmap family level}
+```{r barplot_family_level}
 ####FAMILY
-#CREATE "_Other" taxon for unassigned at this level
 OTUs<-read_qza(file.path(tables_directory,"filtered_table_l5.qza"))$data
 OTUs<-apply(OTUs, 2, function(x) x/sum(x)*100) #convert to percent
-OTUs_simplified= OTUs %>%
-  as.data.frame() %>%
-  rownames_to_column("Feature.ID") %>%
-  mutate(Feature.ID=if_else(grepl("f__$",Feature.ID,fixed=FALSE), "_Other", Feature.ID)) %>%  
-  mutate(Feature.ID=if_else(grepl("f__",Feature.ID,fixed=FALSE), Feature.ID, "_Other")) 
-# select top 4 from each sample
-OTUsToPlot<-  
-  OTUs_simplified %>%
-  gather(-Feature.ID, key="SampleID", value="Abundance") %>%
-  group_by(SampleID) %>%
-  mutate(Abundance=if_else(Feature.ID == "__Other",  NA_real_, Abundance )) %>% #flag features to be collapsed
-  mutate(Abundance=if_else(Abundance == 0,  NA_real_, Abundance )) %>% #flag features to be collapsed
-  group_by(SampleID, Feature.ID) %>%
-  summarize(Abundance=sum(Abundance)) %>%
-  group_by(SampleID) %>%  
-  slice_max(Abundance,n=4) %>%
-  pull(Feature.ID) %>% #extract only the names from the table
-  unique 
-OTUs_composition_table=
-  OTUs_simplified %>%
-  as.data.frame() %>%
-  gather(-Feature.ID, key="SampleID", value="Abundance") %>%
-  mutate(Feature.ID=if_else((Feature.ID %in% OTUsToPlot) | (Feature.ID =="_Other"),  Feature.ID, "_Low abundant")) %>% #flag features to be collapsed
-  group_by(SampleID, Feature.ID) %>%
-  summarize(Abundance=sum(Abundance)) %>%
-  left_join(metadata[,1:16]) %>%
-  mutate(NormAbundance=log10(Abundance+0.01)) %>% # do a log10 transformation after adding a 0.01% pseudocount. Could also add 1 read before transformation to percent
-  mutate(Taxon=gsub("k__.*f__", "", Feature.ID)) %>%
-  mutate(Taxon=gsub(";g__.*", "", Taxon)) 
-#plot 1
-OTUs_composition_table %>%
-  ggplot(aes(x=SampleID, y=Taxon, fill=NormAbundance)) +
-  geom_tile() +
-  facet_grid(~`type2`, scales="free_x", space="free_x") +
-  theme_q2r() +
-  theme(axis.text.x=element_text(angle=45, hjust=1)) +
-  #theme(strip.text = element_text(angle=90, hjust=0, size =8))+
-  scale_fill_viridis_c(name="log10(% Abundance)")
-ggsave(file.path(supp2_plots_dir,"Family_heatmap.pdf"), height=5, width=11, device="pdf") # save a PDF 3 inches by 4 inches
-ggsave(file.path(supp2_plots_dir,"Family_heatmap.pdf"), height=5, width=11, device="png") # save a PDF 3 inches by 4 inches
 
-#barplot
-barplot = taxa_barplot(OTUs, metadata, "type2", ntoplot = 10)
+barplot = taxa_barplot(OTUs, metadata, "group_2", ntoplot = 10)
 barplot[["data"]][["Taxon"]]=gsub("k__.*f__", "", barplot[["data"]][["Taxon"]])
 barplot[["data"]][["Taxon"]]=gsub(";g__.*", "", barplot[["data"]][["Taxon"]])
 barplot[["data"]][["Taxon"]]=gsub("Remainder", " Remainder", barplot[["data"]][["Taxon"]])
-barplot
-ggsave(file.path(supp2_plots_dir,"top_10_Families_barplot.png"), height=5, width=11, device="png")
-ggsave(file.path(supp2_plots_dir,"top_10_Families_barplot.pdf"), height=5, width=11, device="pdf")
+barplot + ylab("Relative Abundance (%)") +
+  theme(strip.text.x = element_text(size = 9, angle = 0), axis.title.y=element_text(size = 11), legend.text = element_text(size=9)) 
 
+ggsave(file.path(supp2_figures_dir,"Figure_3_Families.png"), height=5, width=11, device="png")
+ggsave(file.path(supp2_figures_dir,"Figure_3_Families.pdf"), height=5, width=11, device="pdf")
 
 ```
 
-```{r}
-####Phylum
-#CREATE "_Other" taxon for unassigned at this level
+```{r barplot_phyla}
 OTUs<-read_qza(file.path(tables_directory,"filtered_table_l2.qza"))$data
 OTUs<-apply(OTUs, 2, function(x) x/sum(x)*100) #convert to percent
-OTUs_simplified= OTUs %>%
-  as.data.frame() %>%
-  rownames_to_column("Feature.ID") %>%
-  mutate(Feature.ID=if_else(grepl("p__$",Feature.ID,fixed=FALSE), "_Other", Feature.ID)) %>%  
-  mutate(Feature.ID=if_else(grepl("p__",Feature.ID,fixed=FALSE), Feature.ID, "_Other")) 
-# select top 4 from each sample
-OTUsToPlot<-  
-  OTUs_simplified %>%
-  gather(-Feature.ID, key="SampleID", value="Abundance") %>%
-  group_by(SampleID) %>%
-  mutate(Abundance=if_else(Feature.ID == "__Other",  NA_real_, Abundance )) %>% #flag features to be collapsed
-  mutate(Abundance=if_else(Abundance == 0,  NA_real_, Abundance )) %>% #flag features to be collapsed
-  group_by(SampleID, Feature.ID) %>%
-  summarize(Abundance=sum(Abundance)) %>%
-  group_by(SampleID) %>%  
-  slice_max(Abundance,n=4) %>%
-  pull(Feature.ID) %>% #extract only the names from the table
-  unique 
-OTUs_composition_table=
-  OTUs_simplified %>%
-  as.data.frame() %>%
-  gather(-Feature.ID, key="SampleID", value="Abundance") %>%
-  mutate(Feature.ID=if_else((Feature.ID %in% OTUsToPlot) | (Feature.ID =="_Other"),  Feature.ID, "_Low abundant")) %>% #flag features to be collapsed
-  group_by(SampleID, Feature.ID) %>%
-  summarize(Abundance=sum(Abundance)) %>%
-  left_join(metadata[,1:16]) %>%
-  mutate(NormAbundance=log10(Abundance+0.01)) %>% # do a log10 transformation after adding a 0.01% pseudocount. Could also add 1 read before transformation to percent
-  mutate(Taxon=gsub("k__.*p__", "", Feature.ID)) %>%
-  mutate(Taxon=gsub(";c__.*", "", Taxon)) 
-#plot
-OTUs_composition_table %>%
-  ggplot(aes(x=SampleID, y=Taxon, fill=NormAbundance)) +
-  geom_tile() +
-  facet_grid(~`type2`, scales="free_x", space="free_x") +
-  theme_q2r() +
-  theme(axis.text.x=element_text(angle=45, hjust=1)) +
-  theme(strip.text = element_text(angle=90, hjust=0, size =8))+
-  scale_fill_viridis_c(name="log10(% Abundance)")
-ggsave(file.path(supp2_plots_dir,"Phylum_heatmap.pdf"), height=5, width=11, device="pdf") # save a PDF 3 inches by 4 inches
-ggsave(file.path(supp2_plots_dir,"Phylum_heatmap.png"), height=5, width=11, device="png") # save a PDF 3 inches by 4 inches
-```
-```{r excel phyla}
-#save excel
-# compare_groups=
-#   OTUs_composition_table %>%
-#   group_by(Taxon, type) %>%
-#   summarize(Abundance=mean(Abundance)) %>%
-#   spread(key="type", value = "Abundance") %>%
-#   mutate_if(is.numeric, round, digits = 2)
-# write.xlsx(as.data.frame(compare_groups), file.path(out_dir,"hospital_heatmaps","Phylum_mean_abundance.xlsx"), row.names=FALSE)
 
-```
-```{r barplot_phyla}
-barplot = taxa_barplot(OTUs, metadata, "type2", ntoplot = 10)
+barplot = taxa_barplot(OTUs, metadata, "group_2", ntoplot = 10)
 barplot[["data"]][["Taxon"]]=gsub("k__.*p__", "", barplot[["data"]][["Taxon"]])
 barplot[["data"]][["Taxon"]]=gsub(";c__.*", "", barplot[["data"]][["Taxon"]])
 barplot[["data"]][["Taxon"]]=gsub("Remainder", " Remainder", barplot[["data"]][["Taxon"]])
-#barplot +  theme(strip.text = element_text(angle=90, hjust=0, size =8))
-barplot
-ggsave(file.path(supp2_plots_dir,"top_10_Phyla_barplot.png"), height=5, width=11, device="png")
-ggsave(file.path(supp2_plots_dir,"top_10_Phyla_barplot.pdf"), height=5, width=11, device="pdf")
+barplot + ylab("Relative Abundance (%)") +
+  theme(strip.text.x = element_text(size = 9, angle = 0), axis.title.y=element_text(size = 11), legend.text = element_text(size=9)) 
+ggsave(file.path(supp2_figures_dir,"Figure_3_Phyla.png"), height=5, width=11, device="png")
+ggsave(file.path(supp2_figures_dir,"Figure_3_Phyla.pdf"), height=5, width=11, device="pdf")
 
 ```
 # hierarchical clustering heatmap
@@ -237,7 +97,7 @@ OTUdf.prop <- OTUdf/rowSums(OTUdf)*100
 
 #print heatmap
 scaleyellowred <- colorRampPalette(c("lightyellow", "red"), space = "rgb")(100)
-heatmap(as.matrix(OTUdf.prop), Rowv = NA, Colv = NA, col = scaleyellowred, cexRow= 0.5, cexCol = 0.2)
+#heatmap(as.matrix(OTUdf.prop), Rowv = NA, Colv = NA, col = scaleyellowred, cexRow= 0.5, cexCol = 0.2)
 ```
 ```{r hc_continue}
 # determine the maximum relative abundance for each column
@@ -250,11 +110,11 @@ OTUdf.prop.5 <- OTUdf.prop[, -which(names(OTUdf.prop) %in% n5)]
 
 
 #color patient groups
-group=(metadata[,c("SampleID","type")] %>% filter(!(SampleID %in% c("SE-15",
-                                                                    "NE-27",
-                                                                    "SE-04",
-                                                                    "SE-08"))))$type
+metadata
+group=(metadata[match(rownames(OTUdf.prop.5),metadata$SampleID),c("SampleID","group_1")])$group_1 # %>% filter(!(SampleID %in% c("SE-15",  "NE-27","SE-04","SE-08"))))
 group = as.character(group)
+# group = factor(group,c("negative","asymptomatic","mild","severe"))
+
 colors = replace(group, which(group== "negative"), "#56B4E9")
 colors = replace(colors, which(colors== "asymptomatic"), "#999999")
 colors = replace(colors, which(colors== "mild"), "orange")
@@ -281,9 +141,8 @@ heatmap(log10(as.matrix(OTUdf.prop.5+0.01)), scale="none", RowSideColors = color
         Colv = as.dendrogram(col.clus), col = scaleyellowred, margins = c(10, 2))
 
 
-
 ####Save the heatmap
-pdf(file.path(plots_dir,"Figure_5.pdf"),height=12, width=10)
+pdf(file.path(figures_dir,"Figure_5.pdf"),height=12, width=10)
 gplots::heatmap.2(log10(as.matrix(OTUdf.prop.5+0.01)),
           Rowv = as.dendrogram(row.clust), 
           Colv = as.dendrogram(col.clus), 
@@ -301,6 +160,7 @@ legend(xy.coords(0,0), lwd = 6,
        col = c("#56B4E9", "#999999", "orange", "brown"),
        xpd=TRUE)
 while (!is.null(dev.list()))  dev.off()
+
 
 
 ```

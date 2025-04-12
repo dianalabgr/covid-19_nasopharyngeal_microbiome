@@ -3,7 +3,7 @@ source tab-qiime
 #conda info
 
 PROJECT_FOLDER="/mnt/raid1/philipos/corona_project/16S_analysis"
-OUTDIR=$PROJECT_FOLDER/results/DA2_analysis
+OUTDIR=$PROJECT_FOLDER"/results/Differential_Abundance_Analysis"
 SE_NE=$OUTDIR"/DA_severe_vs_negative"
 SE_AS=$OUTDIR"/DA_severe_vs_asymptomatic"
 SE_MI=$OUTDIR"/DA_severe_vs_mild"
@@ -13,7 +13,8 @@ AS_NE=$OUTDIR"/DA_asymptomatic_vs_negative"
 
 INDIR=$PROJECT_FOLDER/data/intermediate/06_frequency_filtering
 GREENGENES_FOLDER=$PROJECT_FOLDER/data/reference/gg_13_8_otus
-METADATA_FILE=$PROJECT_FOLDER/data/16S_3batches_metadata.tsv
+METADATA_FILE=$PROJECT_FOLDER/data/covid19_study_metadata.tsv
+mkdir $OUTDIR
 mkdir $SE_NE
 mkdir $SE_AS
 mkdir $SE_MI
@@ -29,13 +30,13 @@ mkdir $AS_NE
 
 X=mild
 Y=asymptomatic
-level=l2
-METADATA_COLUMN="type2"
+level=l6
+METADATA_COLUMN="ALDEx2_group"
 for X in severe mild asymptomatic
 do
   for Y in mild asymptomatic negative
   do
-	for level in l2 l5 l6
+	for level in l6 l5 l2
 	do
 		
 		if [[ $X == $Y ]]
@@ -48,7 +49,7 @@ do
 		qiime feature-table filter-samples \
 		  --i-table $INDIR"/filtered_table_"$level".qza" \
 		  --m-metadata-file $METADATA_FILE \
-		  --p-where "[type]='"$X"' OR [type]='"$Y"'" \
+		  --p-where "[group_1]='"$X"' OR [group_1]='"$Y"' AND ([disease_phase]!='recovery phase')"\
 		  --o-filtered-table $OUTDIR"/DA_"$X"_vs_"$Y"/filtered_table_"$level"_"$X"_"$Y".qza"
 		qiime aldex2 aldex2 \
 		  --i-table $OUTDIR"/DA_"$X"_vs_"$Y"/filtered_table_"$level"_"$X"_"$Y".qza" \

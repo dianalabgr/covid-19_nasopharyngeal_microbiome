@@ -14,7 +14,7 @@ mkdir $OUTDIR
 qiime sample-classifier classify-samples \
       --i-table $INDIR/filtered_table_l6.qza \
       --m-metadata-file $METADATA_FILE \
-      --m-metadata-column type \
+      --m-metadata-column group_1 \
       --p-optimize-feature-selection \
       --p-parameter-tuning \
       --p-estimator RandomForestClassifier \

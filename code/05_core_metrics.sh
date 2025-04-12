@@ -6,7 +6,7 @@ PROJECT_FOLDER="/mnt/raid1/philipos/corona_project/16S_analysis"
 OUTDIR=$PROJECT_FOLDER/data/intermediate/08_core_metrics
 INDIR=$PROJECT_FOLDER/data/intermediate/06_frequency_filtering
 GREENGENES_FOLDER=$PROJECT_FOLDER/data/reference/gg_13_8_otus
-METADATA_FILE=$PROJECT_FOLDER/data/16S_3batches_metadata.tsv
+METADATA_FILE=$PROJECT_FOLDER/data/covid19_study_metadata.tsv
 mkdir $OUTDIR
 
 #ALPHA AND BETA DIVERSITY

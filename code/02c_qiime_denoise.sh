@@ -7,7 +7,7 @@ source tab-qiime
 PROJECT_FOLDER="/mnt/raid1/philipos/corona_project/16S_analysis"
 QIIME_OUTDIR=$PROJECT_FOLDER/data/intermediate/02_qiime_denoise
 IMPORT_LIST=$PROJECT_FOLDER/data/intermediate/01_quality_filtered_fastq_files/filtered_fastq_list.tsv
-METADATA_FILE=$PROJECT_FOLDER/data/16S_3batches_metadata.tsv
+METADATA_FILE=$PROJECT_FOLDER/data/covid19_study_metadata.tsv
 GREENGENES_FOLDER=$PROJECT_FOLDER/data/reference/gg_13_8_otus
 cd $PROJECT_FOLDER
 

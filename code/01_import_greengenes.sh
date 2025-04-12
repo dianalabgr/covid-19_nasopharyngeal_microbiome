@@ -27,3 +27,5 @@ qiime tools export \
      --output-path ./
 
 sed 's\; \|\g' tree.nwk > 99_otus_tree.nwk
+	 
+	 
