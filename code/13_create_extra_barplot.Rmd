@@ -1,0 +1,123 @@
+---
+title: "barfigures"
+author: "FK"
+date: "2/14/2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+## Create bacteria composition Heatmap, grouped by hospital environment
+```{r libraries_and_import}
+library(qiime2R)
+library(tibble)
+library(tidyverse)
+library(xlsx)
+library(this.path())
+library(ape)
+
+project_dir=this.path::here(..=1)
+tables_directory=paste0(project_dir,"/data/intermediate/06_frequency_filtering")
+figures_dir=paste0(project_dir, "/results/figures")
+supp_figures_dir=file.path(project_dir,"results/supplementary_figures")
+dir.create(supp_figures_dir, showWarnings = FALSE)
+metadata_file=paste0(project_dir,"/data/covid19_study_metadata.tsv")
+metadata<-read_q2metadata(metadata_file)
+metadata$group_1 = factor(metadata$group_1,c("negative","asymptomatic","mild","severe"))  #, labels = c("NE","AS","MI","SE")
+metadata$group_2 = gsub(" ","\n",metadata$group_2)
+metadata$group_2 = factor(metadata$group_2,c('negative',"asymptomatic\nrecovery\nphase","asymptomatic\nearly\nphase",'mild','severe'), levels=c('negative',"asymptomatic\nrecovery\nphase","asymptomatic\nearly\nphase",'mild','severe'))
+metadata = metadata %>% mutate(group_2 = factor(group_2, labels = c('negative',"asympt.\nrecovery\nphase","asympt.\nearly\nphase",'mild','severe')))
+
+```
+```{r barplot_genus_level}
+rf_results_folder="/mnt/raid1/philipos/corona_project/16S_analysis/data/intermediate/10_randomforest/classifier_1_l6"
+important_taxa = read_table(paste0(rf_results_folder,"/feature_importance_table.tsv"), col_names = TRUE)[2:20,]
+
+OTUs<-read_qza(file.path(tables_directory,"filtered_table_l6.qza"))$data
+OTUs<-apply(OTUs, 2, function(x) x/sum(x)*100) 
+# Ensure rownames and important_taxa are character vectors
+rownames_OTUs <- rownames(OTUs)
+
+# Logical vector indicating which rows are in important_taxa
+keep_rows <- rownames_OTUs %in% important_taxa$id
+
+# Subset rows to keep
+OTUs_kept <- OTUs[keep_rows, , drop = FALSE]
+
+# Sum all other rows
+OTUs_others <- colSums(OTUs[!keep_rows, , drop = FALSE])
+
+# Combine into a new matrix/data frame
+# Create a new row with name "Others"
+OTUs <- rbind(OTUs_kept, ` Remainder` = OTUs_others)
+
+
+process_taxonomy <- function(taxonomy) {
+  # Split taxonomy into levels
+  levels <- unlist(strsplit(taxonomy, ";"))
+  
+  # Find last assigned index
+  last_assigned_index <- -1
+  for (i in seq_along(levels)) {
+    # Split prefix and name
+    parts <- strsplit(levels[i], "__")[[1]]
+    if (length(parts) == 2) {
+      name <- trimws(parts[2])
+      # Check if assigned (non-empty name)
+      if (nchar(name) > 0) {
+        last_assigned_index <- i
+      }
+    }
+  }
+  if (last_assigned_index == -1) {
+    # No assigned level found; return original
+    return(taxonomy)
+  }
+  # Extract the last assigned level without prefix
+  last_level <- levels[last_assigned_index]
+  last_name <- sub("^[a-z]__","", last_level) # Remove prefix
+    # Extract remaining unassigned levels including their prefixes
+  if (last_assigned_index < length(levels)) {
+    unassigned_levels <- levels[(last_assigned_index + 1):length(levels)]
+    # Join unassigned levels keeping prefixes, separated by ;
+    unassigned_str <- paste(unassigned_levels, collapse = ";")
+    # Combine last assigned name + ";" + unassigned parts (if any)
+    combined <- if (nchar(unassigned_str) > 0) {
+      paste0(last_name, ";", unassigned_str)
+    } else {
+      last_name
+    }
+    return(combined)
+  } else {
+    # No unassigned suffix levels
+    return(last_name)
+  }
+}
+
+
+rownames(OTUs) <- sapply(rownames(OTUs), process_taxonomy)
+# process_taxonomy(rownames(OTUs))
+
+barplot = taxa_barplot(OTUs, metadata, "group_2", ntoplot = 20)
+barplot[["data"]][["Taxon"]]=gsub("k__.*o__", "", barplot[["data"]][["Taxon"]])
+# barplot[["data"]][["Taxon"]]=gsub(";s__.*", "", barplot[["data"]][["Taxon"]])
+# barplot[["data"]][["Taxon"]]=gsub("Remainder", " Remainder", barplot[["data"]][["Taxon"]])
+barplot + 
+  scale_fill_manual(values = c(
+    "grey", "coral", "yellow3", "aquamarine", "#49b3a6",
+    "chartreuse1", "pink", "olivedrab", "darkorchid", "gold",
+    "firebrick", "orange", "blue4", "deepskyblue2", "seagreen",
+    "violetred1", "tan3", "purple", "khaki3", "sienna3"), name = "") +
+  ylab("Relative Abundance (%)") +
+  guides(fill=guide_legend(title="Genus")) +
+  theme(strip.text.x = element_text(size = 10, angle = 0), axis.title.y=element_text(size = 11), 
+        legend.text = element_text(size=7), legend.title = element_text(size=10),
+        plot.margin = unit(c(0.3, 0.1, 0.3, 0.1), "in"))
+  
+ggsave(file.path(supp_figures_dir,"Supplementary_Figure_S2.jpg"), height=5, width=11, device="jpg")
+ggsave(file.path(supp_figures_dir,"Supplementary_Figure_S2.pdf"), height=5, width=11, device="pdf")
+
+```
+
