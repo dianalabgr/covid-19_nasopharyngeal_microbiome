@@ -1,0 +1,14 @@
+	W	Reject null hypothesis
+k__Bacteria;p__Bacteroidetes	10	True
+k__Bacteria;p__Chlorobi	10	True
+k__Bacteria;p__Actinobacteria	2	False
+k__Bacteria;p__Cyanobacteria	2	False
+k__Bacteria;p__Firmicutes	2	False
+k__Bacteria;p__SR1	2	False
+k__Bacteria;p__Spirochaetes	2	False
+k__Bacteria;p__Tenericutes	2	False
+k__Bacteria;p__Fusobacteria	1	False
+k__Bacteria;p__Synergistetes	1	False
+k__Bacteria;p__TM7	1	False
+k__Bacteria;p__Proteobacteria	0	False
+k__Bacteria;p__[Thermi]	0	False
